@@ -1,0 +1,120 @@
+
+#include <stdio.h>
+#include <string.h>
+
+int main()
+{
+    char dir[10][20], file[10][10][20];
+    int n, i, j, choice, count[10] = {0};
+    char dname[20], fname[20];
+    int found;
+
+    printf("Enter number of directories: ");
+    scanf("%d", &n);
+
+    for(i = 0; i < n; i++)
+    {
+        printf("Enter directory name: ");
+        scanf("%s", dir[i]);
+    }
+
+    do
+    {
+        printf("\n1. Create File");
+        printf("\n2. Display Files");
+        printf("\n3. Search File");
+        printf("\n4. Exit");
+        printf("\nEnter your choice: ");
+        scanf("%d", &choice);
+
+        switch(choice)
+        {
+            case 1:
+                printf("Enter directory name: ");
+                scanf("%s", dname);
+
+                found = 0;
+                for(i = 0; i < n; i++)
+                {
+                    if(strcmp(dir[i], dname) == 0)
+                    {
+                        found = 1;
+                        printf("Enter file name: ");
+                        scanf("%s", fname);
+
+                        for(j = 0; j < count[i]; j++)
+                        {
+                            if(strcmp(file[i][j], fname) == 0)
+                                break;
+                        }
+
+                        if(j < count[i])
+                            printf("File already exists");
+                        else if(count[i] < 10)
+                        {
+                            strcpy(file[i][count[i]], fname);
+                            count[i]++;
+                            printf("File created successfully");
+                        }
+                        else
+                            printf("Directory is full");
+                        break;
+                    }
+                }
+
+                if(!found)
+                    printf("Directory not found");
+                break;
+
+            case 2:
+                for(i = 0; i < n; i++)
+                {
+                    printf("\nDirectory: %s\n", dir[i]);
+
+                    for(j = 0; j < count[i]; j++)
+                        printf("%s\n", file[i][j]);
+                }
+                break;
+
+            case 3:
+                printf("Enter directory name: ");
+                scanf("%s", dname);
+
+                printf("Enter file name: ");
+                scanf("%s", fname);
+
+                found = 0;
+
+                for(i = 0; i < n; i++)
+                {
+                    if(strcmp(dir[i], dname) == 0)
+                    {
+                        for(j = 0; j < count[i]; j++)
+                        {
+                            if(strcmp(file[i][j], fname) == 0)
+                            {
+                                found = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if(found)
+                    printf("File found");
+                else
+                    printf("File not found");
+                break;
+
+            case 4:
+                printf("Exiting");
+                break;
+
+            default:
+                printf("Invalid choice");
+        }
+
+    } while(choice != 4);
+
+    return 0;
+}
