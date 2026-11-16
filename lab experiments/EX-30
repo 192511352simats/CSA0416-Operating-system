@@ -1,0 +1,109 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+
+#define CAMERAS 64
+
+int sharedCounter = 0;
+int nextCamera = 0;
+
+pthread_mutex_t mutex;
+
+void *processCamera(void *arg)
+{
+    int cameraID = *(int *)arg;
+
+    // Thread-private variable
+    int platesDetected = 0;
+
+    // Simulate camera processing
+    usleep(10000);
+
+    platesDetected = 1;
+
+    // Protect shared counter using mutex
+    pthread_mutex_lock(&mutex);
+    sharedCounter += platesDetected;
+    pthread_mutex_unlock(&mutex);
+
+    printf("Camera %d processed by thread %lu\n",
+           cameraID, (unsigned long)pthread_self());
+
+    return NULL;
+}
+
+void *workerThread(void *arg)
+{
+    int workerID = *(int *)arg;
+
+    while (1)
+    {
+        int cameraID;
+
+        pthread_mutex_lock(&mutex);
+
+        if (nextCamera >= CAMERAS)
+        {
+            pthread_mutex_unlock(&mutex);
+            break;
+        }
+
+        cameraID = nextCamera++;
+        pthread_mutex_unlock(&mutex);
+
+        processCamera(&cameraID);
+    }
+
+    printf("Worker %d completed processing.\n", workerID);
+
+    return NULL;
+}
+
+void runThreadPool(int numberOfThreads)
+{
+    pthread_t threads[16];
+    int workerIDs[16];
+
+    sharedCounter = 0;
+    nextCamera = 0;
+
+    pthread_mutex_init(&mutex, NULL);
+
+    printf("\n====================================\n");
+    printf("Running with %d worker threads\n", numberOfThreads);
+    printf("====================================\n");
+
+    for (int i = 0; i < numberOfThreads; i++)
+    {
+        workerIDs[i] = i + 1;
+
+        pthread_create(&threads[i], NULL,
+                       workerThread, &workerIDs[i]);
+    }
+
+    for (int i = 0; i < numberOfThreads; i++)
+    {
+        pthread_join(threads[i], NULL);
+    }
+
+    printf("\nTotal cameras processed: %d\n", sharedCounter);
+
+    pthread_mutex_destroy(&mutex);
+}
+
+int main()
+{
+    printf("TRAFFIC CAMERA NUMBER-PLATE READER\n");
+    printf("THREAD MANAGEMENT DEMONSTRATION\n");
+
+    runThreadPool(1);
+    runThreadPool(4);
+    runThreadPool(8);
+    runThreadPool(16);
+
+    printf("\nAll camera processing completed successfully.\n");
+
+    return 0;
+}
