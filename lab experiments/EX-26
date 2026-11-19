@@ -1,0 +1,73 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main()
+{
+    FILE *fp;
+    char filename[50], data[100];
+    int choice;
+
+    printf("Enter file name: ");
+    scanf("%49s", filename);
+
+    printf("\n1. Create File");
+    printf("\n2. Write File");
+    printf("\n3. Read File");
+    printf("\n4. Delete File");
+    printf("\nEnter your choice: ");
+    scanf("%d", &choice);
+
+    switch(choice)
+    {
+        case 1:
+            fp = fopen(filename, "w");
+            if(fp != NULL)
+            {
+                printf("File created successfully.\n");
+                fclose(fp);
+            }
+            else
+                printf("File creation failed.\n");
+            break;
+
+        case 2:
+            fp = fopen(filename, "w");
+            if(fp != NULL)
+            {
+                printf("Enter data: ");
+                scanf(" %99[^\n]", data);
+                fprintf(fp, "%s", data);
+                printf("Data written successfully.\n");
+                fclose(fp);
+            }
+            else
+                printf("File opening failed.\n");
+            break;
+
+        case 3:
+            fp = fopen(filename, "r");
+            if(fp != NULL)
+            {
+                printf("File contents:\n");
+                while(fgets(data, sizeof(data), fp) != NULL)
+                    printf("%s", data);
+                fclose(fp);
+            }
+            else
+                printf("File not found.\n");
+            break;
+
+        case 4:
+            if(remove(filename) == 0)
+                printf("File deleted successfully.\n");
+            else
+                printf("File deletion failed.\n");
+            break;
+
+        default:
+            printf("Invalid choice.\n");
+    }
+
+    return 0;
+}
