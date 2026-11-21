@@ -1,0 +1,53 @@
+
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+
+int main()
+{
+    int fd;
+    struct stat st;
+
+    // Create a file
+    fd = open("test.txt", O_CREAT | O_WRONLY, 0644);
+
+    if(fd < 0)
+    {
+        perror("File creation failed");
+        return 1;
+    }
+
+    close(fd);
+
+    // Set file permissions
+    chmod("test.txt", 0754);
+
+    // Get file information
+    stat("test.txt", &st);
+
+    printf("File Access Permissions\n");
+    printf("-----------------------\n");
+
+    printf("Owner: ");
+    printf("%s%s%s\n",
+        (st.st_mode & S_IRUSR) ? "Read " : "",
+        (st.st_mode & S_IWUSR) ? "Write " : "",
+        (st.st_mode & S_IXUSR) ? "Execute" : "");
+
+    printf("Group: ");
+    printf("%s%s%s\n",
+        (st.st_mode & S_IRGRP) ? "Read " : "",
+        (st.st_mode & S_IWGRP) ? "Write " : "",
+        (st.st_mode & S_IXGRP) ? "Execute" : "");
+
+    printf("Others: ");
+    printf("%s%s%s\n",
+        (st.st_mode & S_IROTH) ? "Read " : "",
+        (st.st_mode & S_IWOTH) ? "Write " : "",
+        (st.st_mode & S_IXOTH) ? "Execute" : "");
+
+    printf("\nPermission: 754\n");
+
+    return 0;
+}
