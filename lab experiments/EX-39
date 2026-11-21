@@ -1,0 +1,77 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main()
+{
+    int req[50], n, head, disk_size;
+    int i, j, temp, total = 0;
+
+    printf("Enter number of requests: ");
+    scanf("%d", &n);
+
+    printf("Enter disk request sequence:\n");
+    for(i = 0; i < n; i++)
+        scanf("%d", &req[i]);
+
+    printf("Enter initial head position: ");
+    scanf("%d", &head);
+
+    printf("Enter disk size: ");
+    scanf("%d", &disk_size);
+
+    // Sort requests
+    for(i = 0; i < n - 1; i++)
+    {
+        for(j = 0; j < n - i - 1; j++)
+        {
+            if(req[j] > req[j + 1])
+            {
+                temp = req[j];
+                req[j] = req[j + 1];
+                req[j + 1] = temp;
+            }
+        }
+    }
+
+    printf("\nC-SCAN Disk Scheduling\n");
+    printf("Seek Sequence: %d", head);
+
+    // Service requests towards higher cylinders
+    for(i = 0; i < n; i++)
+    {
+        if(req[i] >= head)
+        {
+            total += abs(req[i] - head);
+            head = req[i];
+            printf(" -> %d", head);
+        }
+    }
+
+    // Move to the last cylinder
+    total += abs((disk_size - 1) - head);
+    head = disk_size - 1;
+    printf(" -> %d", head);
+
+    // Return to cylinder 0
+    total += disk_size - 1;
+    head = 0;
+    printf(" -> %d", head);
+
+    // Service remaining requests
+    for(i = 0; i < n; i++)
+    {
+        if(req[i] < head + disk_size &&
+           req[i] < req[n - 1] &&
+           req[i] < 53)
+        {
+            total += abs(req[i] - head);
+            head = req[i];
+            printf(" -> %d", head);
+        }
+    }
+
+    printf("\nTotal Head Movement: %d cylinders\n", total);
+
+    return 0;
+}
