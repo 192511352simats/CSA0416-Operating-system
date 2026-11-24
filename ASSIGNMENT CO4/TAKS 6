@@ -1,0 +1,53 @@
+/* Two storage designs for the lecture-video start-up, simulated.
+   Workload: 10,000 concurrent streams at 2.5 Mbps, 4 MB chunk reads -> ~781 chunk reads/s.
+   2,000 videos (avg 1 GB = 250 chunks), Zipf(1) popularity, students jump to any minute (random chunk).
+   Design A: 32 HDD only.   Design B: 12 HDD + 2 NVMe holding an LRU cache of 20% of the catalogue (100,000 chunks).
+   HDD service = 8 ms seek + 4.17 ms rotation + 4 MB / 150 MB/s;  NVMe = 0.1 ms + 4 MB / 2 GB/s. Each video has 3 replicas on HDDs. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#define NV 2000
+#define NC 250
+#define LAMBDA 781.25
+static unsigned long long rs = 99ULL;
+static double rnd(void){ rs = rs*6364136223846793005ULL + 1442695040888963407ULL; return (double)(rs>>11)/9007199254740992.0; }
+static double cdf[NV];
+static int zipf(void){ double u=rnd(); int lo=0,hi=NV-1; while(lo<hi){int m=(lo+hi)/2; if(cdf[m]<u) lo=m+1; else hi=m;} return lo; }
+/* LRU cache of chunk ids using a doubly linked list + direct-mapped lookup table */
+#define TOT (NV*NC)
+static int *prv,*nxt,*in; static int head=-1,tail=-1,csize=0;
+static void unlink_(int x){ if(prv[x]>=0) nxt[prv[x]]=nxt[x]; else head=nxt[x]; if(nxt[x]>=0) prv[nxt[x]]=prv[x]; else tail=prv[x]; }
+static void push(int x){ prv[x]=-1; nxt[x]=head; if(head>=0) prv[head]=x; head=x; if(tail<0) tail=x; }
+static int cache_access(int x,int cap){ if(in[x]){ unlink_(x); push(x); return 1; }
+    if(csize>=cap){ int v=tail; unlink_(v); in[v]=0; csize--; } in[x]=1; push(x); csize++; return 0; }
+static int cmpd(const void*a,const void*b){ double d=*(const double*)a-*(const double*)b; return d<0?-1:d>0; }
+static void sim(const char*name,int nhdd,int nssd,int cap){
+    memset(in,0,sizeof(int)*TOT); head=tail=-1; csize=0; rs=99ULL;
+    double *hb=calloc(nhdd,sizeof(double)), *sb=calloc(nssd?nssd:1,sizeof(double));
+    long N=200000, WARM=300000; double *lat=malloc(N*sizeof(double)); double t=0,hbusy=0; long hits=0;
+    for(long i=0;i<WARM+N;i++){
+        t += -log(1.0-rnd())/LAMBDA; int v=zipf(), c=(int)(rnd()*NC), id=v*NC+c; int hit=0;
+        if(nssd) hit=cache_access(id,cap);
+        double fin;
+        if(hit){ int d=0; for(int k=1;k<nssd;k++) if(sb[k]<sb[d]) d=k; double st=t>sb[d]?t:sb[d]; double sv=0.0001+4.0/2000.0; sb[d]=st+sv; fin=sb[d]; if(i>=WARM) hits++; }
+        else { int r0=(v*7)%nhdd, r1=(v*7+5)%nhdd, r2=(v*7+11)%nhdd; int d=r0; if(hb[r1]<hb[d]) d=r1; if(hb[r2]<hb[d]) d=r2;
+               double st=t>hb[d]?t:hb[d]; double sv=0.008+0.00417+4.0/150.0; hb[d]=st+sv; fin=hb[d]; if(i>=WARM) hbusy+=sv; }
+        if(i>=WARM) lat[i-WARM]=fin-t;
+    }
+    double sum=0; for(long i=0;i<N;i++) sum+=lat[i]; qsort(lat,N,sizeof(double),cmpd);
+    double span=N/LAMBDA;
+    printf("%-34s cache hit %5.1f%% | HDD util %6.1f%% | mean %9.1f ms | p95 %9.1f ms | p99 %9.1f ms\n",
+        name, nssd?100.0*hits/N:0.0, 100.0*hbusy/(span*nhdd), 1000*sum/N, 1000*lat[(long)(0.95*N)], 1000*lat[(long)(0.99*N)]);
+    free(hb); free(sb); free(lat);
+}
+int main(void){
+    prv=malloc(sizeof(int)*TOT); nxt=malloc(sizeof(int)*TOT); in=malloc(sizeof(int)*TOT);
+    double s=0; for(int i=0;i<NV;i++){ s+=1.0/(i+1); cdf[i]=s; } for(int i=0;i<NV;i++) cdf[i]/=s;
+    printf("Offered load: %.0f chunk reads/s (10,000 streams x 2.5 Mbps / 4 MB chunks)\n", LAMBDA);
+    sim("Design A: 32 HDD, no SSD cache",32,0,0);
+    sim("Design A2: 40 HDD, no SSD cache",40,0,0);
+    sim("Design B: 12 HDD + 2 NVMe cache (20%)",12,2,100000);
+    sim("Design B2: 12 HDD + 2 NVMe cache (5%)",12,2,25000);
+    return 0;
+}
